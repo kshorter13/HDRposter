@@ -928,18 +928,6 @@ function fitSummary() {
   }
 }
 
-  function printWithName() {
-  const name = (document.getElementById('name')?.value || '').trim();
-  const original = document.title;
-  if (name) {
-    // Sanitise: remove characters that are invalid in filenames
-    const safe = name.replace(/[\/\\:*?"<>|]/g, '').trim();
-    document.title = `PhD Poster - ${safe}`;
-  }
-  window.print();
-  // Restore after a short delay (print dialog is synchronous in most browsers)
-  setTimeout(() => { document.title = original; }, 1000);
-}
 
 // ══════════════════════════════════════════════════════
 //  SUPERVISORS — photo fetch, QR generation, card render
@@ -981,6 +969,20 @@ function updateSups() {
   }
   renderSups();
 }
+
+function printWithName() {
+  const name = (document.getElementById('name')?.value || '').trim();
+  const original = document.title;
+  if (name) {
+    // Sanitise: remove characters that are invalid in filenames
+    const safe = name.replace(/[\/\\:*?"<>|]/g, '').trim();
+    document.title = `PhD Poster - ${safe}`;
+  }
+  window.print();
+  // Restore after a short delay (print dialog is synchronous in most browsers)
+  setTimeout(() => { document.title = original; }, 1000);
+}
+  
 
 // Called when a supervisor URL field changes — clears cached photo and re-renders
 function onSupUrlChange(idx) {
