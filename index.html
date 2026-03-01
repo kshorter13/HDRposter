@@ -976,11 +976,12 @@ function printWithName() {
   if (name) {
     // Sanitise: remove characters that are invalid in filenames
     const safe = name.replace(/[\/\\:*?"<>|]/g, '').trim();
-    document.title = `PhD Poster - ${safe}`;
+    document.title = `HDR Poster - ${safe}`;
   }
-  window.print();
-  // Restore after a short delay (print dialog is synchronous in most browsers)
-  setTimeout(() => { document.title = original; }, 1000);
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { document.title = original; }, 1000);
+  }, 100);
 }
   
 
