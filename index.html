@@ -970,21 +970,7 @@ function updateSups() {
   renderSups();
 }
 
-function printWithName() {
-  const name = (document.getElementById('name')?.value || '').trim();
-  const original = document.title;
-  if (name) {
-    // Sanitise: remove characters that are invalid in filenames
-    const safe = name.replace(/[\/\\:*?"<>|]/g, '').trim();
-    document.title = `HDR Poster - ${safe}`;
-  }
-  setTimeout(() => {
-    window.print();
-    setTimeout(() => { document.title = original; }, 1000);
-  }, 100);
-}
   
-
 // Called when a supervisor URL field changes — clears cached photo and re-renders
 function onSupUrlChange(idx) {
   delete supPhotos[idx];
@@ -1580,6 +1566,19 @@ function renderPubs() {
   });
 }
 
+function printWithName() {
+  const name = (document.getElementById('name')?.value || '').trim();
+  const original = document.title;
+  if (name) {
+    // Sanitise: remove characters that are invalid in filenames
+    const safe = name.replace(/[\/\\:*?"<>|]/g, '').trim();
+    document.title = `HDR Poster - ${safe}`;
+  }
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { document.title = original; }, 1500);
+  }, 150);
+}
 // ── Reset ──
 function resetForm() {
   if (!confirm('Reset all fields and images?')) return;
