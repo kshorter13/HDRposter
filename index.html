@@ -7,7 +7,7 @@
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', 'G-FJQM37ZTBW');
-</script>   
+</script>    
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SoHS HDR Poster Creator</title>
@@ -546,7 +546,7 @@ textarea { min-height: 60px; }
   </div>
   <div class="t-right">
     <button class="btn btn-ghost" onclick="resetForm()">↺ Reset</button>
-    <button class="btn btn-solid" onclick="window.print()">🖨 Print / Save PDF</button>
+    <button class="btn btn-solid" onclick="printWithName()">🖨 Print / Save PDF</button>
   </div>
 </div>
 
@@ -926,6 +926,19 @@ function fitSummary() {
     size -= 0.5;
     box.style.fontSize = size + 'px';
   }
+}
+
+  function printWithName() {
+  const name = (document.getElementById('name')?.value || '').trim();
+  const original = document.title;
+  if (name) {
+    // Sanitise: remove characters that are invalid in filenames
+    const safe = name.replace(/[\/\\:*?"<>|]/g, '').trim();
+    document.title = `PhD Poster - ${safe}`;
+  }
+  window.print();
+  // Restore after a short delay (print dialog is synchronous in most browsers)
+  setTimeout(() => { document.title = original; }, 1000);
 }
 
 // ══════════════════════════════════════════════════════
