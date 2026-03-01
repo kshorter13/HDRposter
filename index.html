@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoHS HDR Poster Creator</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* ════════════════════════════════
+   EDITOR UI
+════════════════════════════════ */
+:root {
+  --red: #CC0000;
+  --black: #1a1a1a;
+  --editor-bg: #181818;
+  --panel-bg: #222;
+  --input-bg: #2a2a2a;
+  --input-border: #3d3d3d;
+  --lbl: #999;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Barlow', sans-serif; background: var(--editor-bg); color: #eee; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+.topbar { background: var(--red); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 52px; flex-shrink: 0; box-shadow: 0 2px 16px rgba(0,0,0,.5); }
+.t-left { display: flex; align-items: center; gap: 14px; }
+.t-logo { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 18px; letter-spacing: 3px; text-transform: uppercase; }
+.t-sep { width: 1px; height: 26px; background: rgba(255,255,255,.25); }
+.t-title { font-size: 13px; font-weight: 300; opacity: .85; }
+.t-right { display: flex; gap: 8px; }
+.btn { padding: 7px 18px; border: none; border-radius: 3px; font-family: 'Barlow', sans-serif; font-weight: 600; font-size: 12px; cursor: pointer; transition: all .2s; }
+.btn-ghost { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.5); }
+.btn-ghost:hover { background: rgba(255,255,255,.12); }
+.btn-solid { background: #fff; color: var(--red); }
+.btn-solid:hover { background: #f0f0f0; }
+
+.main { display: flex; flex: 1; overflow: hidden; }
+.editor { width: 380px; flex-shrink: 0; background: var(--panel-bg); overflow-y: auto; border-right: 1px solid #2e2e2e; }
+
+.esec { border-bottom: 1px solid #2a2a2a; }
+.esec-hdr { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; cursor: pointer; user-select: none; transition: background .15s; }
+.esec-hdr:hover { background: #272727; }
+.esec-left { display: flex; align-items: center; gap: 9px; }
+.esec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
+.esec-name { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 1.8px; text-transform: uppercase; color: #ccc; }
+.esec-arrow { font-size: 10px; color: #555; transition: transform .2s; }
+.esec-arrow.open { transform: rotate(90deg); }
+.esec-body { padding: 14px 18px 18px; display: none; }
+.esec-body.open { display: block; }
+
+.field { margin-bottom: 13px; }
+.field:last-child { margin-bottom: 0; }
+label { display: block; font-size: 11px; font-weight: 600; color: var(--lbl); letter-spacing: .9px; text-transform: uppercase; margin-bottom: 5px; }
+input[type=text], input[type=url], input[type=number], textarea {
+  width: 100%; background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: 4px; color: #eee; font-family: 'Barlow', sans-serif; font-size: 13px;
+  padding: 7px 10px; transition: border-color .2s; resize: vertical;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--red); }
+textarea { min-height: 60px; }
+.field-hint { font-size: 11px; color: #666; margin-top: 4px; font-style: italic; }
+.count-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.count-row label { margin: 0; white-space: nowrap; }
+.count-row input { width: 65px; flex-shrink: 0; }
+
+.img-spec { background: #1e1e1e; border-left: 2px solid var(--red); border-radius: 0 4px 4px 0; padding: 8px 10px; margin-bottom: 8px; font-size: 11px; color: #888; line-height: 1.6; }
+.img-spec strong { color: #ccc; }
+.spec-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+.spec-tag { background: #2a2a2a; border: 1px solid #444; border-radius: 10px; padding: 2px 8px; font-size: 10px; color: #aaa; }
+
+.upload-zone { border: 2px dashed var(--input-border); border-radius: 6px; padding: 14px; text-align: center; cursor: pointer; transition: all .2s; background: var(--input-bg); position: relative; }
+.upload-zone:hover { border-color: var(--red); background: #2f2f2f; }
+.upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-icon { font-size: 22px; margin-bottom: 3px; }
+.upload-hint { font-size: 11px; color: #777; }
+
+.repos-wrap { margin-top: 8px; display: none; }
+.repos-wrap.active { display: block; }
+.repos-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.repos-hdr span { font-size: 10.5px; color: #888; }
+.repos-hdr button { font-size: 10px; background: #2a2a2a; border: 1px solid #444; color: #ccc; padding: 3px 8px; border-radius: 3px; cursor: pointer; }
+.repos-hdr button:hover { background: var(--red); border-color: var(--red); color: #fff; }
+.crop-box { width: 100%; border-radius: 4px; overflow: hidden; border: 1px solid #444; position: relative; cursor: grab; background: #111; user-select: none; }
+.crop-box.dragging { cursor: grabbing; }
+.crop-box img { position: absolute; max-width: none; max-height: none; pointer-events: none; }
+.repos-hint { font-size: 10px; color: #555; margin-top: 4px; text-align: center; }
+
+/* Supervisor entry cards in editor */
+.sup-entry { background: #1c1c1c; border: 1px solid #333; border-radius: 5px; padding: 11px; margin-bottom: 9px; }
+.sup-entry-hdr { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 1.5px; color: var(--red); text-transform: uppercase; margin-bottom: 8px; }
+
+/* Publication entry cards in editor */
+.pub-entry { background: #1c1c1c; border: 1px solid #333; border-radius: 5px; padding: 11px; margin-bottom: 9px; }
+.pub-entry-hdr { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 11px; letter-spacing: 1.5px; color: var(--red); text-transform: uppercase; margin-bottom: 8px; }
+
+.preview-panel { flex: 1; background: #0f0f0f; display: flex; flex-direction: column; align-items: center; padding: 24px 20px; overflow: auto; }
+.preview-tag { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: #444; margin-bottom: 14px; align-self: flex-start; }
+.poster-outer { display: flex; justify-content: center; width: 100%; }
+.poster-scaler { transform-origin: top center; display: block; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #111; }
+::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--red); }
+
+/* Topic image slots grid in editor */
+.topic-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.topic-slot {
+  position: relative; border: 2px dashed var(--input-border); border-radius: 5px;
+  background: var(--input-bg); cursor: pointer; overflow: hidden;
+  aspect-ratio: 3/2; transition: border-color .2s;
+}
+.topic-slot:hover { border-color: var(--red); }
+.topic-slot input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.topic-slot-thumb { position: absolute; inset: 0; display: none; background-size: cover; background-position: center; }
+.topic-slot-thumb.has-img { display: block; }
+.topic-slot-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; pointer-events: none; }
+.topic-slot-empty .ts-icon { font-size: 18px; }
+.topic-slot-empty .ts-lbl { font-size: 10px; color: #666; }
+.topic-slot-num { position: absolute; top: 4px; left: 5px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 11px; color: rgba(255,255,255,.85); background: rgba(0,0,0,.5); border-radius: 3px; padding: 1px 5px; pointer-events: none; }
+.topic-slot-rm { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; background: var(--red); color: #fff; border: none; border-radius: 50%; font-size: 10px; line-height: 18px; text-align: center; cursor: pointer; display: none; z-index: 5; padding: 0; }
+.topic-slot.filled .topic-slot-rm { display: block; }
+.topic-slot.filled { border-color: var(--red); border-style: solid; }
+
+/* ════════════════════════════════════════════════════════════
+   POSTER  794 × 559 px  (A5 landscape @ 96 dpi = 210×148 mm)
+
+   ┌──────────────────────────────────────────────────────┐
+   │  RED HEADER: School name (left)  |  HDR program      │
+   ├──────────┬───────────────────────────────────────────┤
+   │ ╭──────╮ │  PhD Badge  ·  Thesis Title               │
+   │ │PHOTO │ │  ┌─────────────────┐  ┌────────────────┐  │
+   │ ╰──────╯ │  │ Project Summary │  │ Supervisors    │  │
+   │  NAME    │  │ (constrained)   │  │ (name + QR     │  │
+   │  quals   │  └─────────────────┘  │  per sup)      │  │
+   │ ──────── │                       └────────────────┘  │
+   │ Educ.    │  ┌─ TOPIC IMAGE (fixed height 80px) ────┐  │
+   │ Exp.     │  └───────────────────────────────────────┘ │
+   ├──────────┴──────────────────────────────────────────┤
+   │  PUBLICATIONS STRIP — redesigned white cards on dark │
+   │  (hidden when count = 0)                             │
+   ├──────────────────────────────────────────────────────┤
+   │  RED FOOTER: Swinburne University of Technology      │
+   └──────────────────────────────────────────────────────┘
+════════════════════════════════════════════════════════════ */
+
+#poster {
+  width: 1122px; height: 794px; background: #fff;
+  display: flex; flex-direction: column;
+  font-family: 'Barlow', sans-serif; overflow: hidden;
+  box-shadow: 0 10px 50px rgba(0,0,0,.7);
+}
+
+/* ── Top header ── */
+.ph-hdr {
+  background: var(--red); height: 34px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
+}
+.ph-school {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  font-size: 16px; color: #fff; letter-spacing: 2px; text-transform: uppercase;
+}
+.ph-program {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 300;
+  font-size: 13px; color: rgba(255,255,255,.85); letter-spacing: 1.5px; text-transform: uppercase;
+}
+
+/* ── Body ── */
+.ph-body { flex: 1; display: flex; overflow: hidden; min-height: 0; }
+
+/* ── LEFT PANEL ── */
+.ph-left {
+  width: 200px; flex-shrink: 0;
+  background: #f4f4f4; border-right: 3px solid var(--red);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px 12px 10px; overflow: hidden;
+}
+
+/* Circular portrait */
+.ph-circle-wrap {
+  width: 124px; height: 124px; border-radius: 50%;
+  border: 3px solid var(--red);
+  overflow: hidden; flex-shrink: 0; position: relative;
+  background: #ddd; margin-bottom: 8px;
+}
+.ph-circle-wrap img { width: 100%; height: 100%; object-fit: cover; display: none; position: absolute; inset: 0; }
+.ph-circle-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #aaa; gap: 3px; }
+.ph-circle-ph .pph-icon { font-size: 30px; }
+.ph-circle-ph .pph-txt { font-size: 10px; color: #aaa; text-align: center; line-height: 1.3; }
+
+/* Name — wraps naturally, JS shrinks font to fit within panel width */
+.ph-left-name {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
+  font-size: 20px; color: #111;
+  text-align: center; line-height: 1.15; margin-bottom: 3px;
+  text-transform: uppercase; letter-spacing: 1px;
+  width: 100%; word-break: break-word;
+  overflow: hidden;
+}
+.ph-left-quals {
+  font-size: 12px; color: #777; font-style: italic;
+  text-align: center; margin-bottom: 8px;
+  width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Divider */
+.ph-left-div { width: 100%; height: 2px; background: var(--red); opacity: .2; margin-bottom: 8px; flex-shrink: 0; }
+
+/* Left section labels */
+.ph-left-sl {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700;
+  letter-spacing: 2px; color: var(--red); text-transform: uppercase;
+  align-self: flex-start; margin-bottom: 5px; margin-top: 10px;
+  border-bottom: 1px solid rgba(204,0,0,.2); width: 100%; padding-bottom: 2px;
+}
+.ph-left-sl:first-of-type { margin-top: 0; }
+
+/* Left dot-point lists */
+.ph-left-list { list-style: none; padding: 0; margin: 0 0 4px 0; width: 100%; }
+.ph-left-list li {
+  font-size: 12px; color: #333; line-height: 1.4;
+  padding-left: 12px; position: relative; margin-bottom: 4px;
+  white-space: normal; word-break: break-word;
+}
+.ph-left-list li::before { content: '▸'; position: absolute; left: 0; color: var(--red); font-size: 9px; top: 3px; }
+
+/* ── RIGHT CONTENT ── */
+.ph-content {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 12px 14px 10px 16px; overflow: hidden; min-width: 0; gap: 8px;
+}
+
+/* Title row — badge above title, full width */
+.ph-title-row { flex-shrink: 0; }
+
+/* Project overview — full width */
+.ph-overview-row {
+  flex-shrink: 0;
+  display: flex; flex-direction: column;
+}
+.ph-summary-box {
+  background: #f8f8f8; border-left: 2px solid var(--red);
+  border-radius: 0 3px 3px 0; padding: 8px 12px;
+  overflow: hidden;
+}
+.ph-summary-box .ph-txt { font-size: 12px; }
+
+/* Bottom row — images left (60%), supervisors right (40%) */
+.ph-bottom-row {
+  flex: 1; display: flex; gap: 12px; min-height: 0; overflow: hidden;
+}
+
+/* Images column — wider, fills available height */
+.ph-images-col {
+  width: 60%; flex-shrink: 0;
+  display: flex; flex-direction: column;
+}
+.ph-topic {
+  flex: 1; min-height: 0;
+  border-radius: 4px; overflow: hidden; position: relative;
+  background: #e8e8e8; border: 1px solid #ddd;
+}
+.ph-topic canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ph-topic-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #bbb; gap: 4px; }
+.ph-topic-ph .pph-icon { font-size: 24px; }
+.ph-topic-ph .pph-txt { font-size: 12px; color: #bbb; text-align: center; }
+.ph-topic-ph .pph-spec { font-size: 10px; color: #ccc; }
+
+/* Supervisors column — narrower right side */
+.ph-sups-col {
+  flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden;
+}
+
+.ph-badge {
+  display: inline-block; background: var(--red); color: #fff;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  padding: 2px 10px; border-radius: 2px; margin-bottom: 5px; align-self: flex-start;
+  flex-shrink: 0;
+}
+.ph-title {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 800;
+  font-size: 26px; color: #111; line-height: 1.15;
+  flex-shrink: 0;
+}
+
+/* Section labels in content area */
+.ph-sl {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700;
+  letter-spacing: 2px; color: var(--red); text-transform: uppercase;
+  border-bottom: 1.5px solid #e8e8e8; padding-bottom: 2px; margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+/* Body text — minimum 12px throughout */
+.ph-txt { font-size: 12px; color: #333; line-height: 1.5; }
+.ph-txt div { margin-bottom: 2px; }
+
+/* Funding box */
+.ph-funding-box {
+  background: #fdf2f2; border-left: 2px solid var(--red);
+  border-radius: 0 3px 3px 0; padding: 5px 10px;
+  flex-shrink: 0; display: none;
+}
+.ph-funding-box .ph-sl-mini {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; color: var(--red); text-transform: uppercase; margin-bottom: 2px;
+}
+.ph-funding-box .ph-funding-text {
+  font-size: 12px; color: #555; line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+
+/* HDR Review Panel */
+.ph-panel-box { flex-shrink: 0; margin-top: 6px; display: none; }
+.ph-panel-text {
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px; color: #444; line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+}
+.ph-panel-text em { font-style: italic; color: #666; }
+
+/* ── SUPERVISOR BOX ── */
+.ph-sup-box {
+  background: transparent; border-left: none; padding: 0;
+  display: flex; flex-direction: column;
+  flex: 1; overflow: hidden; gap: 6px;
+}
+
+/* ── SUPERVISOR BOX ── */
+.ph-sup-box {
+  background: transparent; border-left: none; padding: 0;
+  display: flex; flex-direction: column;
+  flex: 1; overflow: hidden; gap: 6px;
+}
+
+/* One card per supervisor — horizontal layout */
+.ph-sup-card {
+  display: flex; align-items: stretch;
+  background: #fff; border: 1px solid #e4e4e4;
+  border-radius: 4px; overflow: hidden;
+  flex: 1; min-height: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.07);
+}
+.ph-sup-card-accent { width: 4px; background: var(--red); flex-shrink: 0; }
+.ph-sup-card-text {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 6px 8px; overflow: hidden;
+}
+.ph-sup-card-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700; font-size: 15px;
+  color: #111; line-height: 1.2;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: font-size 0.1s;
+}
+.ph-sup-card-role {
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px; color: #888;
+  font-style: italic; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* QR block — square, sized by JS to card height */
+.ph-sup-card-qr {
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: #fafafa; border-left: 1px solid #ececec;
+  padding: 4px; overflow: hidden;
+}
+.ph-sup-card-qr-ph {
+  width: 100%; height: 100%;
+  background: #f0f0f0; border: 1px dashed #ccc; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; color: #bbb; text-align: center; line-height: 1.3; padding: 2px;
+  box-sizing: border-box;
+}
+
+/* Supervisor photo avatar */
+.ph-sup-card-avatar {
+  flex-shrink: 0; border-radius: 50%; overflow: hidden;
+  background: #e8e8e8; border: 1.5px solid #ddd;
+  display: flex; align-items: center; justify-content: center;
+  margin: auto 6px;
+}
+.ph-sup-card-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.ph-sup-card-avatar-ph { font-size: 18px; color: #bbb; }
+.ph-sup-card-avatar-loading {
+  flex-shrink: 0; border-radius: 50%; background: #f0f0f0;
+  display: flex; align-items: center; justify-content: center;
+  margin: auto 6px;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.ph-sup-card-avatar-loading::after {
+  content: ''; display: block; width: 18px; height: 18px;
+  border: 2px solid #ccc; border-top-color: var(--red);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 3 supervisors */
+.ph-sup-box.sups-3 .ph-sup-card-name { font-size: 14px; }
+.ph-sup-box.sups-3 { gap: 5px; }
+
+/* 4 supervisors */
+.ph-sup-box.sups-4 .ph-sup-card-name { font-size: 13px; }
+.ph-sup-box.sups-4 .ph-sup-card-text { padding: 4px 6px; }
+.ph-sup-box.sups-4 .ph-sup-card-accent { width: 3px; }
+.ph-sup-box.sups-4 { gap: 4px; }
+
+/* 5 supervisors */
+.ph-sup-box.sups-5 .ph-sup-card-name { font-size: 12px; }
+.ph-sup-box.sups-5 .ph-sup-card-role { font-size: 11px; }
+.ph-sup-box.sups-5 .ph-sup-card-text { padding: 3px 5px; }
+.ph-sup-box.sups-5 .ph-sup-card-accent { width: 3px; }
+.ph-sup-box.sups-5 { gap: 3px; }
+
+/* 6 supervisors */
+.ph-sup-box.sups-6 .ph-sup-card-name { font-size: 12px; }
+.ph-sup-box.sups-6 .ph-sup-card-role { font-size: 11px; }
+.ph-sup-box.sups-6 .ph-sup-card-text { padding: 2px 5px; }
+.ph-sup-box.sups-6 .ph-sup-card-accent { width: 3px; }
+.ph-sup-box.sups-6 { gap: 3px; }
+
+/* ════════════════════════════════
+   PUBLICATIONS STRIP — redesigned
+   White cards on dark charcoal bg
+════════════════════════════════ */
+.ph-pubs {
+  flex-shrink: 0;
+  background: #1e1e1e;
+  padding: 5px 14px 6px;
+  border-top: 3px solid var(--red);
+}
+.ph-pubs-hdr {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 2.5px; color: #ffffff; text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.ph-pubs-row { display: flex; gap: 8px; overflow: hidden; align-items: stretch; }
+
+/* Each publication card — white on dark */
+.ph-pub-card {
+  flex: 1; min-width: 0;
+  background: #ffffff; border-radius: 4px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+}
+/* Red accent strip at top of each card */
+.ph-pub-card-top {
+  background: var(--red); height: 3px; flex-shrink: 0;
+}
+.ph-pub-card-body {
+  flex: 1; display: flex; gap: 6px; align-items: flex-start;
+  padding: 4px 6px 4px;
+}
+.ph-pub-qr-wrap {
+  width: 80px; height: 80px; flex-shrink: 0;
+  background: #fff; border: 1px solid #e8e8e8; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.ph-pub-qr-wrap canvas, .ph-pub-qr-wrap img { width: 72px !important; height: 72px !important; display: block; }
+.ph-pub-info { flex: 1; min-width: 0; overflow: hidden; }
+.ph-pub-label {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 9px;
+  color: var(--red); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px;
+}
+.ph-pub-cite {
+  font-size: 9px; color: #222; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ── RED FOOTER BANNER ── */
+.ph-footer {
+  background: var(--red); height: 22px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
+}
+.ph-foot-uni {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  font-size: 12px; color: #fff; letter-spacing: 2.5px; text-transform: uppercase;
+}
+.ph-foot-url {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 300;
+  font-size: 11px; color: rgba(255,255,255,.75); letter-spacing: 1px;
+}
+
+/* ── Force colour fidelity in all contexts ── */
+* {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+  color-adjust: exact !important;
+}
+
+/* ── Print ── */
+@media print {
+  body, html { background: #fff !important; overflow: visible !important; height: auto !important; }
+  .topbar, .editor, .preview-tag { display: none !important; }
+  .preview-panel { padding: 0 !important; background: #fff !important; display: block !important; }
+  .poster-outer { display: block !important; }
+  .poster-scaler { transform: none !important; margin: 0 !important; }
+  #poster { width: 297mm; height: 210mm; box-shadow: none !important; }
+  /* Re-assert backgrounds explicitly so Chromium/Safari don't strip them */
+  .ph-funding-box         { background: #fdf2f2 !important; }
+  .ph-hdr, .ph-footer     { background: #CC0000 !important; }
+  .ph-left                { background: #f4f4f4 !important; }
+  .ph-pubs                { background: #1e1e1e !important; }
+  .ph-pub-card            { background: #ffffff !important; }
+  .ph-pub-card-top        { background: #CC0000 !important; }
+  .ph-summary-box         { background: #f8f8f8 !important; }
+  .ph-sup-box             { background: #f8f8f8 !important; }
+  .ph-badge               { background: #CC0000 !important; }
+  .ph-sup-card            { background: #ffffff !important; }
+  .ph-sup-card-accent     { background: #CC0000 !important; }
+  .ph-sup-card-qr         { background: #fafafa !important; overflow: visible !important; }
+  /* QR codes: at print, let canvas render at full 400px native resolution — printer rasterises at high DPI */
+  .ph-sup-card-qr canvas,
+  .ph-sup-card-qr img,
+  .ph-pub-qr-wrap canvas,
+  .ph-pub-qr-wrap img     { width: auto !important; height: auto !important; max-width: 100% !important; max-height: 100% !important; }
+  .ph-sup-card-qr         { overflow: visible !important; }
+  .ph-pub-qr-wrap         { overflow: visible !important; }
+  @page { size: A4 landscape; margin: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ TOP BAR ═══════════ -->
+<div class="topbar">
+  <div class="t-left">
+    <div class="t-logo">School of Health Sciences</div>
+    <div class="t-sep"></div>
+    <div class="t-title">HDR Research Poster Creator — A4 Landscape</div>
+  </div>
+  <div class="t-right">
+    <button class="btn btn-ghost" onclick="resetForm()">↺ Reset</button>
+    <button class="btn btn-solid" onclick="window.print()">🖨 Print / Save PDF</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════════ EDITOR ═══════════════════ -->
+<div class="editor">
+
+  <!-- CANDIDATE -->
+  <div class="esec">
+    <div class="esec-hdr" onclick="toggleSec(this)">
+      <div class="esec-left"><div class="esec-dot"></div><div class="esec-name">Candidate</div></div>
+      <div class="esec-arrow open">▶</div>
+    </div>
+    <div class="esec-body open">
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="name" placeholder="Jane Smith" oninput="update()">
+        <div class="field-hint"></div>
+      </div>
+      <div class="field"><label>Post-nominal Qualifications</label><input type="text" id="quals" placeholder="BHlthSc" oninput="update()"><div class="field-hint">Enter your COMPLETED formal qualifications</div></div>
+      <div class="field">
+        <label>HDR Program of Study</label>
+        <input type="text" id="program" placeholder="Doctor of Philosophy (PhD)" oninput="update()">
+        <div class="field-hint">e.g. Doctor of Philosophy (PhD), Master of Science (Research)</div>
+      </div>
+      <div class="field">
+        <label>Portrait Photo</label>
+        <div class="img-spec">
+          <strong>Ideal:</strong> 400 × 500 px or larger · head &amp; shoulders, plain background.
+          <div class="spec-tags"><span class="spec-tag">📐 2:3 ratio</span><span class="spec-tag">👤 Head &amp; shoulders</span><span class="spec-tag">📁 JPG / PNG</span></div>
+        </div>
+        <div class="upload-zone" id="photo-zone">
+          <input type="file" accept="image/*" onchange="loadImg(this,'photo')">
+          <div class="upload-icon">📷</div>
+          <div class="upload-hint">Click or drag a portrait photo</div>
+        </div>
+        <div class="repos-wrap" id="photo-repos">
+          <div class="repos-hdr"><span>🖱 Drag to reposition</span><button onclick="removeImg('photo')">✕ Remove</button></div>
+          <div class="crop-box" id="photo-crop" style="height:100px"><img id="photo-crop-img" draggable="false"></div>
+          <div class="repos-hint">Drag to adjust which part of the photo shows</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACADEMIC JOURNEY -->
+  <div class="esec">
+    <div class="esec-hdr" onclick="toggleSec(this)">
+      <div class="esec-left"><div class="esec-dot"></div><div class="esec-name">Academic Journey</div></div>
+      <div class="esec-arrow open">▶</div>
+    </div>
+    <div class="esec-body open">
+      <div class="field">
+        <label>Academic Background</label>
+        <textarea id="education" placeholder="2019 – BHlthSc, Swinburne&#10;2021 – MSc Sports Science, Uni of Melbourne&#10;2023 – PhD Candidate, Swinburne" oninput="update()"></textarea>
+        <div class="field-hint">Max 3 dot points — one entry per line</div>
+      </div>
+      <div class="field">
+        <label>Professional Experience</label>
+        <textarea id="experience" placeholder="2020–present – Sports Scientist, Melbourne Victory FC&#10;2018–2020 – Exercise Scientist, Keiser&#10;2017–2018 – Research Assistant, Swinburne University of Technology" oninput="update()"></textarea>
+        <div class="field-hint">Max 3 dot points — one entry per line</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PHD RESEARCH -->
+  <div class="esec">
+    <div class="esec-hdr" onclick="toggleSec(this)">
+      <div class="esec-left"><div class="esec-dot"></div><div class="esec-name">PhD Research</div></div>
+      <div class="esec-arrow open">▶</div>
+    </div>
+    <div class="esec-body open">
+      <div class="field"><label>Thesis Title</label><textarea id="phdTitle" placeholder="Enter your full thesis title here…" oninput="update()"></textarea></div>
+      <div class="field">
+        <label>Project Summary</label>
+        <textarea id="summary" style="min-height:80px" placeholder="Concisely summarise your research topic, aims  and significance…" oninput="update()"></textarea>
+        <div class="field-hint" style="display:flex;justify-content:space-between;">
+          <span>Maximum 120 words — excess is trimmed on the poster</span>
+          <span id="summary-wordcount" style="font-weight:600;">0 / 120 words</span>
+        </div>
+      </div>
+
+      <!-- FUNDING / PARTNERSHIP -->
+      <div class="field">
+        <label>External / Industry Funding or Partnership <span style="font-weight:400;color:#888;font-size:10px">(if applicable)</span></label>
+        <textarea id="funding" rows="2" style="resize:none;" placeholder="e.g. ARC Linkage Project LP220100123 in partnership with the Australian Sports Commission" oninput="update()"></textarea>
+        <div class="field-hint">Max 2 lines — leave blank to hide from poster</div>
+      </div>
+
+      <!-- SUPERVISORS -->
+      <div class="field">
+        <label>Number of Supervisors</label>
+        <div class="count-row">
+          <input type="number" id="supCount" min="1" max="6" value="2" onchange="updateSups()">
+          <span style="font-size:11px;color:#666">supervisors (max 6)</span>
+        </div>
+        <div id="supFields"></div>
+      </div>
+
+      <!-- HDR REVIEW PANEL -->
+      <div class="field">
+        <label>HDR Review Panel <span style="font-weight:400;color:#888;font-size:10px">(optional)</span></label>
+        <div style="background:#1a1a1a;border-left:2px solid var(--red);padding:7px 10px;margin-bottom:8px;font-size:11px;color:#888;line-height:1.5;border-radius:0 3px 3px 0;">
+          The panel chair is listed first in <em>italics</em>, followed by other members. Leave blank to hide.
+        </div>
+        <div class="field" style="margin-bottom:6px;">
+          <label style="color:var(--red);">★ Panel Chair <span style="font-weight:400;color:#888;font-size:10px">(listed first, shown in italics)</span></label>
+          <input type="text" id="panelChair" placeholder="Prof. John Doe" oninput="update()">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>Other Panel Members</label>
+          <textarea id="panelMembers" rows="3" placeholder="Dr. John Lee&#10;A/Prof. Sarah Chen&#10;Dr. Mike Torres" oninput="update()"></textarea>
+          <div class="field-hint">One name per line — they appear after the chair</div>
+        </div>
+      </div>
+
+      <!-- TOPIC IMAGES (up to 4) -->
+      <div class="field">
+        <label>Research / Topic Images</label>
+        <div class="img-spec">
+          Upload <strong>1–4 images</strong>. Multiple images are stitched side-by-side into a banner. Landscape shots work best.
+          <div class="spec-tags"><span class="spec-tag">📐 Landscape preferred</span><span class="spec-tag">🏃 Action / lab shots</span><span class="spec-tag">📁 JPG / PNG</span><span class="spec-tag">🖼 Up to 4 images</span></div>
+        </div>
+
+        <!-- Slot grid — 4 upload slots -->
+        <div class="topic-slots" id="topic-slots">
+          <!-- Slots rendered by buildTopicSlots() -->
+        </div>
+        <div class="field-hint" style="margin-top:6px;">Images display left-to-right in upload order. Click ✕ on a slot to remove that image.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PUBLICATIONS -->
+  <div class="esec">
+    <div class="esec-hdr" onclick="toggleSec(this)">
+      <div class="esec-left"><div class="esec-dot"></div><div class="esec-name">Publications &amp; QR Codes</div></div>
+      <div class="esec-arrow open">▶</div>
+    </div>
+    <div class="esec-body open">
+      <div style="background:#1e1e1e;border-left:2px solid var(--red);padding:8px 10px;margin-bottom:12px;font-size:11px;color:#888;line-height:1.55;border-radius:0 4px 4px 0;">
+        In <strong style="color:#ccc">APA format</strong> provide details of any publications associated with your candidature. Set to <strong style="color:#ccc">0</strong> to hide the strip. Up to 6 supported — 3–5 display best.
+      </div>
+      <div class="count-row">
+        <label>Number of Publications</label>
+        <input type="number" id="pubCount" min="0" max="6" value="3" onchange="updatePubs()">
+      </div>
+      <div id="pubFields"></div>
+    </div>
+  </div>
+
+</div><!-- /editor -->
+
+<!-- ═══════════════════ PREVIEW ═══════════════════ -->
+<div class="preview-panel">
+  <div class="preview-tag">▶ Live Poster Preview — A4 Landscape (297 × 210 mm)</div>
+  <div class="poster-outer">
+    <div class="poster-scaler" id="posterScaler">
+
+      <div id="poster">
+
+        <!-- TOP HEADER -->
+        <div class="ph-hdr">
+          <div class="ph-school" id="p-school">School of Health Sciences</div>
+          <div class="ph-program" id="p-program">Doctor of Philosophy (PhD)</div>
+        </div>
+
+        <!-- BODY -->
+        <div class="ph-body">
+
+          <!-- LEFT — about the candidate -->
+          <div class="ph-left">
+            <div class="ph-circle-wrap">
+              <img id="ph-portrait-img" src="">
+              <div class="ph-circle-ph" id="ph-portrait-ph">
+                <div class="pph-icon">👤</div>
+                <div class="pph-txt">Portrait<br>Photo</div>
+              </div>
+            </div>
+            <div class="ph-left-name" id="p-name">CANDIDATE NAME</div>
+            <div class="ph-left-quals" id="p-quals"></div>
+            <div class="ph-left-div"></div>
+            <div class="ph-left-sl">Academic Background</div>
+            <ul class="ph-left-list" id="p-education"><li>Prior qualifications will appear here.</li></ul>
+            <div class="ph-left-sl">Professional Experience</div>
+            <ul class="ph-left-list" id="p-experience"><li>Work experience will appear here.</li></ul>
+          </div>
+
+          <!-- RIGHT — research content -->
+          <div class="ph-content">
+
+            <!-- TITLE ROW: badge + title, full width -->
+            <div class="ph-title-row">
+              <div class="ph-badge">Research Summary</div>
+              <div class="ph-title" id="p-title">Your Thesis Title Will Appear Here</div>
+            </div>
+
+            <!-- FUNDING BAR — full width, hidden when empty -->
+            <div class="ph-funding-box" id="ph-funding-box">
+              <div class="ph-sl-mini">External Funding / Industry Partnership</div>
+              <div class="ph-funding-text" id="p-funding"></div>
+            </div>
+
+            <!-- PROJECT OVERVIEW — full width -->
+            <div class="ph-overview-row">
+              <div class="ph-sl">Project Overview</div>
+              <div class="ph-summary-box">
+                <div class="ph-txt" id="p-summary">A summary of your research project will appear here once you enter it in the editor panel on the left.</div>
+              </div>
+            </div>
+
+            <!-- BOTTOM ROW: images left, supervisors right -->
+            <div class="ph-bottom-row">
+
+              <!-- Images panel — squarish tiled area -->
+              <div class="ph-images-col">
+                <div class="ph-topic">
+                  <canvas id="ph-topic-canvas" style="width:100%;height:100%;display:none;position:absolute;inset:0;"></canvas>
+                  <div class="ph-topic-ph" id="ph-topic-ph">
+                    <div class="pph-icon">🔬</div>
+                    <div class="pph-txt">Research / Topic Images (up to 4)</div>
+                    <div class="pph-spec">Square or portrait images work best · Multiple images tile to fill</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Supervisors + panel -->
+              <div class="ph-sups-col">
+                <div class="ph-sl">Supervisors</div>
+                <div class="ph-sup-box" id="ph-sup-box">
+                  <!-- rendered by renderSups() -->
+                </div>
+                <!-- HDR Review Panel — hidden when empty -->
+                <div class="ph-panel-box" id="ph-panel-box">
+                  <div class="ph-sl" style="font-size:11px;margin-top:6px;">HDR Review Panel</div>
+                  <div class="ph-panel-text" id="p-panel-text"></div>
+                </div>
+              </div>
+
+            </div><!-- /ph-bottom-row -->
+
+          </div><!-- /ph-content -->
+
+        </div><!-- /ph-body -->
+
+        <!-- PUBLICATIONS STRIP -->
+        <div class="ph-pubs" id="ph-pubs" style="display:none">
+          <div class="ph-pubs-hdr">Publications</div>
+          <div class="ph-pubs-row" id="ph-pubs-row"></div>
+        </div>
+
+        <!-- RED FOOTER -->
+        <div class="ph-footer">
+          <div class="ph-foot-uni">Swinburne University of Technology</div>
+          <div class="ph-foot-url">swinburne.edu.au</div>
+        </div>
+
+      </div><!-- /#poster -->
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ── Section toggle ──
+function toggleSec(hdr) {
+  const body = hdr.nextElementSibling;
+  const arrow = hdr.querySelector('.esec-arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open', body.classList.contains('open'));
+}
+
+// ── Scale poster ──
+function scalePoster() {
+  const outer = document.querySelector('.poster-outer');
+  const scaler = document.getElementById('posterScaler');
+  if (!outer || !scaler) return;
+  const ratio = Math.min(1, (outer.clientWidth - 32) / 1122);
+  scaler.style.transform = `scale(${ratio})`;
+  scaler.style.marginBottom = `${(794 * ratio) - 794}px`;
+}
+window.addEventListener('resize', () => { scalePoster(); requestAnimationFrame(() => setTimeout(regenSupQRs, 80)); });
+setTimeout(scalePoster, 80);
+
+// ── Main text update ──
+function update() {
+  // Header program
+  document.getElementById('p-program').textContent =
+    document.getElementById('program').value || 'Doctor of Philosophy (PhD)';
+
+  // Name — uppercase + fit to 2 lines
+  const rawName = document.getElementById('name').value;
+  document.getElementById('p-name').textContent = rawName ? rawName.toUpperCase() : 'CANDIDATE NAME';
+  requestAnimationFrame(fitCandidateName);
+
+  // Quals
+  document.getElementById('p-quals').textContent = document.getElementById('quals').value || '';
+
+  // Thesis title
+  document.getElementById('p-title').textContent =
+    document.getElementById('phdTitle').value || 'Your Thesis Title Will Appear Here';
+
+  // Summary — cap to 120 words, update counter, render
+  const sumEl = document.getElementById('p-summary');
+  const rawSummary = document.getElementById('summary').value || '';
+  const words = rawSummary.trim() ? rawSummary.trim().split(/\s+/) : [];
+  const capped = words.slice(0, 120).join(' ');
+  sumEl.textContent = capped || 'A summary of your research project will appear here.';
+  // Update word counter hint
+  const wcEl = document.getElementById('summary-wordcount');
+  if (wcEl) {
+    wcEl.textContent = `${Math.min(words.length, 120)} / 120 words`;
+    wcEl.style.color = words.length > 120 ? '#cc0000' : '#888';
+  }
+  requestAnimationFrame(fitSummary);
+
+  // Funding / Partnership — show box only when populated
+  const fundingVal = (document.getElementById('funding')?.value || '').trim();
+  const fundingBox = document.getElementById('ph-funding-box');
+  const fundingEl  = document.getElementById('p-funding');
+  const fundingWasVisible = fundingBox.style.display === 'block';
+  if (fundingVal) {
+    const lines = fundingVal.split('\n').filter(l => l.trim()).slice(0, 2).join(' · ');
+    fundingEl.textContent = lines;
+    fundingBox.style.display = 'block';
+  } else {
+    fundingBox.style.display = 'none';
+  }
+  if (fundingWasVisible !== (fundingBox.style.display === 'block')) {
+    requestAnimationFrame(() => setTimeout(regenSupQRs, 80));
+  }
+
+  // HDR Review Panel — show only when chair is provided
+  const chairVal   = (document.getElementById('panelChair')?.value   || '').trim();
+  const membersVal = (document.getElementById('panelMembers')?.value || '').trim();
+  const panelBox   = document.getElementById('ph-panel-box');
+  const panelText  = document.getElementById('p-panel-text');
+  const panelWasVisible = panelBox.style.display === 'block';
+  if (chairVal) {
+    const memberLines = membersVal.split('\n').map(l => l.trim()).filter(Boolean);
+    const allNames = [`${chairVal} <em>(Chair)</em>`, ...memberLines];
+    panelText.innerHTML = allNames.join(' &nbsp;·&nbsp; ');
+    panelBox.style.display = 'block';
+  } else {
+    panelBox.style.display = 'none';
+  }
+  const panelNowVisible = panelBox.style.display === 'block';
+  // Whenever panel visibility changes, card heights change — regenerate QR codes after layout settles
+  if (panelWasVisible !== panelNowVisible) {
+    requestAnimationFrame(() => setTimeout(regenSupQRs, 80));
+  }
+
+  // Dot point lists
+  setDotPoints('p-education',  'education',  'Prior qualifications will appear here.', 3);
+  setDotPoints('p-experience', 'experience', 'Work experience will appear here.', 3);
+}
+
+function setDotPoints(pid, iid, ph, max) {
+  const el = document.getElementById(pid); if (!el) return;
+  const v = document.getElementById(iid)?.value || '';
+  const lines = v.split('\n').filter(l => l.trim()).slice(0, max);
+  el.innerHTML = lines.length ? lines.map(l => `<li>${l}</li>`).join('') : `<li>${ph}</li>`;
+}
+
+// Shrink project summary font until text fits, never below 12px.
+function fitSummary() {
+  const box = document.getElementById('p-summary');
+  if (!box) return;
+  const container = box.closest('.ph-summary-box');
+  if (!container) return;
+  box.style.fontSize = '12px';
+  const maxSize = 12, minSize = 12; // floor is 12px per design spec
+  let size = maxSize;
+  while (size > minSize && box.scrollHeight > container.clientHeight) {
+    size -= 0.5;
+    box.style.fontSize = size + 'px';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  SUPERVISORS — photo fetch, QR generation, card render
+// ══════════════════════════════════════════════════════
+
+// Cache: index (1-based) → dataURL string | null (failed) | undefined (not yet tried)
+const supPhotos  = {};
+const supFetching = {};
+
+// ── Build editor fields for N supervisors ──
+function updateSups() {
+  const n = Math.max(1, Math.min(6, parseInt(document.getElementById('supCount').value) || 1));
+  const container = document.getElementById('supFields');
+  container.innerHTML = '';
+  const roleHints = ['Primary Supervisor', 'Co-Supervisor', 'Co-Supervisor', 'Associate Supervisor', 'Associate Supervisor', 'Industry Supervisor'];
+  const nameHints = ['Prof. John Doe', 'Dr. Mary Lee', 'Dr. Alex Brown', 'Dr. Sam Chen', 'Dr. Pat Kim', 'Dr. Jordan Smith'];
+  for (let i = 1; i <= n; i++) {
+    const d = document.createElement('div');
+    d.className = 'sup-entry';
+    d.innerHTML = `
+      <div class="sup-entry-hdr">Supervisor ${i}</div>
+      <div class="field">
+        <label>Name</label>
+        <input type="text" id="sup-name-${i}" placeholder="${nameHints[i-1]}" oninput="renderSups()">
+      </div>
+      <div class="field">
+        <label>Role / Title</label>
+        <input type="text" id="sup-role-${i}" placeholder="${roleHints[i-1]}" oninput="renderSups()">
+        <div class="field-hint">e.g. Primary Supervisor, Co-Supervisor, Associate Supervisor</div>
+      </div>
+      <div class="field">
+        <label>Swinburne Staff Page URL</label>
+        <input type="url" id="sup-url-${i}"
+          placeholder="https://experts.swinburne.edu.au/****-staff-name"
+          oninput="onSupUrlChange(${i})">
+        <div class="field-hint">Use the <strong>experts.swinburne.edu.au</strong> URL for best results — photo auto-fetched &amp; QR generated</div>
+      </div>`;
+    container.appendChild(d);
+  }
+  renderSups();
+}
+
+// Called when a supervisor URL field changes — clears cached photo and re-renders
+function onSupUrlChange(idx) {
+  delete supPhotos[idx];
+  delete supFetching[idx];
+  renderSups();
+}
+
+// ── Fetch supervisor photo from experts.swinburne.edu.au thumbnail URL ──
+// The thumbnail URL pattern is: https://experts.swinburne.edu.au/NUMBER-firstname-lastname/thumbnail
+// We fetch the staff profile page (via corsproxy) to extract the NUMBER, then fetch the image.
+async function fetchSupPhoto(idx, profileUrl) {
+  if (!profileUrl || !profileUrl.startsWith('http')) return;
+  if (supPhotos.hasOwnProperty(idx) || supFetching[idx]) return;
+  supFetching[idx] = true;
+
+  const av = document.getElementById(`sup-avatar-${idx}`);
+  if (av) { av.className = 'ph-sup-card-avatar-loading'; av.innerHTML = ''; }
+
+  try {
+    let thumbnailUrl = null;
+
+
+    const expertsMatch = profileUrl.match(/experts\.swinburne\.edu\.au\/([\d]+[\w-]+)/i);
+    if (expertsMatch) {
+      thumbnailUrl = `https://experts.swinburne.edu.au/${expertsMatch[1]}/thumbnail`;
+    }
+
+    // --- Otherwise fetch the profile page HTML to find the experts ID ---
+    if (!thumbnailUrl) {
+      const pageProxy = `https://corsproxy.io/?url=${encodeURIComponent(profileUrl)}`;
+      const pageResp  = await fetch(pageProxy);
+      if (!pageResp.ok) throw new Error('page fetch failed');
+      const html = await pageResp.text();
+
+      // Look for experts.swinburne.edu.au/NUMBER-name anywhere in the HTML
+      const expertsSrcMatch = html.match(/experts\.swinburne\.edu\.au\/([\d]+[\w-]+)(?:\/thumbnail)?/i);
+      if (expertsSrcMatch) {
+        thumbnailUrl = `https://experts.swinburne.edu.au/${expertsSrcMatch[1]}/thumbnail`;
+      }
+
+      // Fallback: look for the old-style /NUMBER-name/thumbnail src on the same domain
+      if (!thumbnailUrl) {
+        const oldSrcMatch = html.match(/src=["']\/?(\d+[\w-]+\/thumbnail)["']/i);
+        if (oldSrcMatch) {
+          thumbnailUrl = `https://www.swinburne.edu.au/${oldSrcMatch[1]}`;
+        }
+      }
+    }
+
+    if (!thumbnailUrl) throw new Error('could not determine thumbnail URL');
+
+    // --- Fetch the image via corsproxy → blob → base64 data URL ---
+    const imgProxy = `https://corsproxy.io/?url=${encodeURIComponent(thumbnailUrl)}`;
+    const imgResp  = await fetch(imgProxy);
+    if (!imgResp.ok) throw new Error('image fetch failed');
+    const blob = await imgResp.blob();
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    supPhotos[idx] = dataUrl;
+
+  } catch(e) {
+    console.warn(`Supervisor ${idx} photo fetch failed:`, e.message);
+    supPhotos[idx] = null;
+  }
+
+  delete supFetching[idx];
+  updateSupAvatar(idx);
+}
+
+// ── Update just the avatar element for one supervisor without rebuilding the card ──
+function updateSupAvatar(idx) {
+  const av = document.getElementById(`sup-avatar-${idx}`);
+  if (!av) return;
+  const n = Math.max(1, Math.min(6, parseInt(document.getElementById('supCount').value) || 1));
+  const avPrimary   = n <= 2 ? 44 : n === 3 ? 40 : n === 4 ? 36 : 30;
+  const avSecondary = n <= 2 ? 44 : n === 3 ? 40 : n === 4 ? 36 : 28;
+  const avSize = (idx === 1) ? avPrimary : avSecondary;
+  const photo = supPhotos[idx];
+  const name  = document.getElementById(`sup-name-${idx}`)?.value || '';
+
+  av.className = 'ph-sup-card-avatar';
+  av.style.width = av.style.height = avSize + 'px';
+  av.innerHTML = '';
+
+  if (photo) {
+    const img = document.createElement('img');
+    img.src = photo; img.alt = name;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;object-position:top center;display:block;';
+    img.onerror = () => { av.innerHTML = `<span class="ph-sup-card-avatar-ph">👤</span>`; };
+    av.appendChild(img);
+  } else {
+    av.innerHTML = `<span class="ph-sup-card-avatar-ph">👤</span>`;
+  }
+  requestAnimationFrame(() => { fitSupNames(); setTimeout(regenSupQRs, 60); });
+}
+
+// ── Generate QR code into a specific element ──
+// The QR container has no fixed CSS size — generateQR sets its width/height inline
+// to match the card's rendered height, making it a perfect square.
+// Minimum scannable at A4 print: 25mm = 94px at poster resolution.
+// At screen scale the poster is shrunk, so we use offsetHeight of the CARD (not container)
+// to measure the true layout pixel size.
+const MIN_SCANNABLE_PX = 30; // screen pixels — poster is scaled down; print renderer uses native
+
+function generateQR(containerId, url) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  // Card height = the QR square size (fill card height)
+  const card = el.closest('.ph-sup-card');
+  const cardH = card ? card.offsetHeight : el.offsetHeight;
+  const size = Math.max(0, Math.min(cardH, 80) - 8); // cap at 80px (pub QR size), 4px padding each side
+
+  if (size < MIN_SCANNABLE_PX) {
+    el.style.display = 'none';
+    return;
+  }
+
+  // Set QR container to exact square matching the capped size
+  const containerSz = size + 8;
+  el.style.width  = containerSz + 'px';
+  el.style.height = containerSz + 'px';
+  el.style.display = '';
+  el.innerHTML = '';
+
+  const style = document.createElement('style');
+  style.textContent = `#${containerId} canvas, #${containerId} img { width:${size}px !important; height:${size}px !important; display:block; }`;
+  el.appendChild(style);
+  try {
+    new QRCode(el, {
+      text: url, width: 400, height: 400,
+      colorDark: '#000000', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  } catch(e) {
+    el.innerHTML = `<div style="font-size:9px;color:#aaa;text-align:center;padding:4px">QR</div>`;
+  }
+}
+
+// ── Render all supervisor cards ──
+function renderSups() {
+  const n = Math.max(1, Math.min(6, parseInt(document.getElementById('supCount').value) || 1));
+  const box = document.getElementById('ph-sup-box');
+  box.innerHTML = '';
+  box.className = 'ph-sup-box' + (n >= 3 ? ` sups-${n}` : '');
+
+  const roleDefaults = ['Primary Supervisor', 'Co-Supervisor', 'Co-Supervisor', 'Associate Supervisor', 'Associate Supervisor', 'Industry Supervisor'];
+
+  // Avatar sizes scale down as more supervisors are added
+  const avPrimary   = n <= 2 ? 44 : n === 3 ? 40 : n === 4 ? 36 : 30;
+  const avSecondary = n <= 2 ? 44 : n === 3 ? 40 : n === 4 ? 36 : 28;
+
+  // QR rule: ≤3 supervisors → all cards get QR; ≥4 → only primary (i===1) gets QR
+  const qrContainerIds = [];
+
+  for (let i = 1; i <= n; i++) {
+    const name  = document.getElementById(`sup-name-${i}`)?.value || `Supervisor ${i}`;
+    const role  = document.getElementById(`sup-role-${i}`)?.value || roleDefaults[i-1];
+    const url   = document.getElementById(`sup-url-${i}`)?.value  || '';
+    const photo = supPhotos[i];
+
+    const showQR = (n <= 3) || (i === 1);
+    const avSize = (i === 1) ? avPrimary : avSecondary;
+
+    const card = document.createElement('div');
+    card.className = 'ph-sup-card';
+
+    const accent = document.createElement('div');
+    accent.className = 'ph-sup-card-accent';
+    card.appendChild(accent);
+
+    // Avatar
+    const av = document.createElement('div');
+    av.id = `sup-avatar-${i}`;
+    if (url && url.startsWith('http') && supFetching[i]) {
+      av.className = 'ph-sup-card-avatar-loading';
+      av.style.width = av.style.height = avSize + 'px';
+    } else if (url && url.startsWith('http') && photo) {
+      av.className = 'ph-sup-card-avatar';
+      av.style.width = av.style.height = avSize + 'px';
+      const img = document.createElement('img');
+      img.src = photo; img.alt = name;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;object-position:top center;';
+      img.onerror = () => { av.innerHTML = `<span class="ph-sup-card-avatar-ph">👤</span>`; };
+      av.appendChild(img);
+    } else {
+      av.className = 'ph-sup-card-avatar';
+      av.style.width = av.style.height = avSize + 'px';
+      av.innerHTML = `<span class="ph-sup-card-avatar-ph">👤</span>`;
+      if (url && url.startsWith('http') && !supPhotos.hasOwnProperty(i) && !supFetching[i]) {
+        fetchSupPhoto(i, url);
+      }
+    }
+    card.appendChild(av);
+
+    // Text
+    const tb = document.createElement('div');
+    tb.className = 'ph-sup-card-text';
+    const ne = document.createElement('div');
+    ne.className = 'ph-sup-card-name'; ne.textContent = name;
+    const re = document.createElement('div');
+    re.className = 'ph-sup-card-role'; re.textContent = role;
+    tb.appendChild(ne); tb.appendChild(re);
+    card.appendChild(tb);
+
+    // QR — all cards for ≤3 sups; primary only for ≥4 sups
+    if (showQR) {
+      const qrBlock = document.createElement('div');
+      qrBlock.className = 'ph-sup-card-qr';
+      qrBlock.id = `sup-qr-${i}`;
+      if (url && url.startsWith('http')) {
+        qrBlock.dataset.qrUrl = url;
+        qrContainerIds.push({ id: `sup-qr-${i}`, url });
+      } else {
+        const ph = document.createElement('div');
+        ph.className = 'ph-sup-card-qr-ph';
+        ph.textContent = 'Add URL for QR';
+        qrBlock.appendChild(ph);
+      }
+      card.appendChild(qrBlock);
+    }
+
+    box.appendChild(card);
+  }
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      qrContainerIds.forEach(({ id, url }) => generateQR(id, url));
+      fitSupNames();
+    }, 60);
+  });
+}
+
+// Re-measure and regenerate all supervisor QR codes in place.
+// Called whenever layout shifts (panel show/hide, window resize, funding toggle, etc.)
+function regenSupQRs() {
+  document.querySelectorAll('.ph-sup-card-qr[id^="sup-qr-"]').forEach(el => {
+    const url = el.dataset.qrUrl;
+    if (!url) return;
+    generateQR(el.id, url);
+  });
+  fitSupNames();
+}
+
+// Shrink candidate name font until it fits within 2 lines inside the left panel.
+function fitCandidateName() {
+  const el = document.getElementById('p-name');
+  if (!el) return;
+  const panel = el.closest('.ph-left');
+  if (!panel) return;
+  let size = 20;
+  const minSize = 13;
+  el.style.fontSize = size + 'px';
+  // 2 lines max: scrollHeight should be <= 2 * lineHeight
+  const twoLineH = () => size * 1.15 * 2 + 2; // 2 lines + small buffer
+  while (size > minSize && el.scrollHeight > twoLineH()) {
+    size -= 0.5;
+    el.style.fontSize = size + 'px';
+  }
+}
+
+// Shrink each supervisor name until it fits on one line within its text block.
+// Steps down from the CSS default to a minimum of 12px.
+function fitSupNames() {
+  document.querySelectorAll('.ph-sup-card-name').forEach(el => {
+    const container = el.closest('.ph-sup-card-text');
+    if (!container) return;
+    // Reset to CSS-defined size first
+    el.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(el).fontSize) || 15;
+    const minSize = 12;
+    while (size > minSize && el.scrollWidth > container.clientWidth) {
+      size -= 0.5;
+      el.style.fontSize = size + 'px';
+    }
+  });
+}
+// ══════════════════════════════════════════════════
+const imgData = {};
+
+function loadImg(input, key) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const src = e.target.result;
+    imgData[key] = { src, ox: 50, oy: 50 };
+    document.getElementById(`${key}-repos`).classList.add('active');
+    const cImg = document.getElementById(`${key}-crop-img`);
+    cImg.src = src;
+    cImg.onload = () => { fitCrop(key); applyPos(key); };
+    applyPos(key);
+    const zone = document.getElementById(`${key}-zone`);
+    zone.style.opacity = '0.4';
+    zone.querySelector('input').style.pointerEvents = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function fitCrop(key) {
+  const box  = document.getElementById(`${key}-crop`);
+  const cImg = document.getElementById(`${key}-crop-img`);
+  const cw = box.clientWidth, ch = box.clientHeight;
+  const nw = cImg.naturalWidth, nh = cImg.naturalHeight;
+  if (!nw || !nh) return;
+  const scale = Math.max(cw / nw, ch / nh);
+  cImg.style.width  = `${nw * scale}px`;
+  cImg.style.height = `${nh * scale}px`;
+}
+
+function applyPos(key) {
+  const d = imgData[key]; if (!d) return;
+  const pImg = document.getElementById('ph-portrait-img');
+  const pPh  = document.getElementById('ph-portrait-ph');
+  if (pImg) {
+    pImg.src = d.src; pImg.style.display = 'block';
+    pImg.style.objectPosition = `${d.ox}% ${d.oy}%`;
+    if (pPh) pPh.style.display = 'none';
+  }
+  const box  = document.getElementById(`${key}-crop`);
+  const cImg = document.getElementById(`${key}-crop-img`);
+  if (!box || !cImg) return;
+  const iw = parseFloat(cImg.style.width)  || cImg.naturalWidth;
+  const ih = parseFloat(cImg.style.height) || cImg.naturalHeight;
+  cImg.style.left = `${(d.ox / 100) * -(iw - box.clientWidth)}px`;
+  cImg.style.top  = `${(d.oy / 100) * -(ih - box.clientHeight)}px`;
+}
+
+function removeImg(key) {
+  delete imgData[key];
+  document.getElementById(`${key}-repos`).classList.remove('active');
+  const zone = document.getElementById(`${key}-zone`);
+  zone.style.opacity = '';
+  zone.querySelector('input').style.pointerEvents = '';
+  zone.querySelector('input').value = '';
+  const pImg = document.getElementById('ph-portrait-img');
+  const pPh  = document.getElementById('ph-portrait-ph');
+  if (pImg) { pImg.src = ''; pImg.style.display = 'none'; }
+  if (pPh)  pPh.style.display = 'flex';
+}
+
+function initDrag(key) {
+  const box = document.getElementById(`${key}-crop`);
+  if (!box) return;
+  let drag = false, sx, sy, sox, soy;
+  const start = (cx, cy) => {
+    drag = true; sx = cx; sy = cy;
+    sox = imgData[key]?.ox ?? 50; soy = imgData[key]?.oy ?? 50;
+    box.classList.add('dragging');
+  };
+  const move = (cx, cy) => {
+    if (!drag || !imgData[key]) return;
+    const cImg = document.getElementById(`${key}-crop-img`);
+    const iw = parseFloat(cImg.style.width) || 1;
+    const ih = parseFloat(cImg.style.height) || 1;
+    const rx = iw - box.clientWidth, ry = ih - box.clientHeight;
+    imgData[key].ox = Math.max(0, Math.min(100, sox - ((cx - sx) / (rx || 1)) * 100));
+    imgData[key].oy = Math.max(0, Math.min(100, soy - ((cy - sy) / (ry || 1)) * 100));
+    applyPos(key);
+  };
+  const end = () => { drag = false; box.classList.remove('dragging'); };
+  box.addEventListener('mousedown', e => { start(e.clientX, e.clientY); e.preventDefault(); });
+  window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+  window.addEventListener('mouseup', end);
+  box.addEventListener('touchstart', e => { const t = e.touches[0]; start(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
+  window.addEventListener('touchmove', e => { const t = e.touches[0]; move(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
+  window.addEventListener('touchend', end);
+}
+initDrag('photo');
+
+// ══════════════════════════════════════════════════
+// TOPIC BANNER — up to 4 images stitched on canvas
+// ══════════════════════════════════════════════════
+const topicImgs = [null, null, null, null];
+
+function buildTopicSlots() {
+  const container = document.getElementById('topic-slots');
+  container.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'topic-slot';
+    slot.id = `tslot-${i}`;
+    slot.innerHTML = `
+      <input type="file" accept="image/*" onchange="loadTopicSlot(this,${i})">
+      <div class="topic-slot-thumb" id="tthumb-${i}"></div>
+      <div class="topic-slot-empty" id="tempty-${i}">
+        <div class="ts-icon">🔬</div>
+        <div class="ts-lbl">Image ${i + 1}</div>
+      </div>
+      <div class="topic-slot-num">${i + 1}</div>
+      <button class="topic-slot-rm" onclick="removeTopicSlot(event,${i})">✕</button>`;
+    container.appendChild(slot);
+  }
+}
+
+function loadTopicSlot(input, idx) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      topicImgs[idx] = img;
+      const thumb = document.getElementById(`tthumb-${idx}`);
+      thumb.style.backgroundImage = `url('${e.target.result}')`;
+      thumb.classList.add('has-img');
+      document.getElementById(`tempty-${idx}`).style.display = 'none';
+      document.getElementById(`tslot-${idx}`).classList.add('filled');
+      input.value = '';
+      renderTopicBanner();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeTopicSlot(e, idx) {
+  e.stopPropagation();
+  topicImgs[idx] = null;
+  const thumb = document.getElementById(`tthumb-${idx}`);
+  thumb.style.backgroundImage = '';
+  thumb.classList.remove('has-img');
+  document.getElementById(`tempty-${idx}`).style.display = '';
+  document.getElementById(`tslot-${idx}`).classList.remove('filled');
+  renderTopicBanner();
+}
+
+function renderTopicBanner() {
+  const canvas = document.getElementById('ph-topic-canvas');
+  const ph     = document.getElementById('ph-topic-ph');
+  const active = topicImgs.filter(Boolean);
+
+  if (!active.length) {
+    canvas.style.display = 'none';
+    ph.style.display = 'flex';
+    return;
+  }
+
+  // Measure the actual container size (the .ph-topic div)
+  const container = canvas.parentElement;
+  const CW = container.clientWidth  || 400;
+  const CH = container.clientHeight || 400;
+
+  // Render at 2× for sharpness on high-DPI / print
+  const BW = CW * 2, BH = CH * 2;
+  canvas.width  = BW;
+  canvas.height = BH;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, BW, BH);
+
+  const n = active.length;
+
+  if (n === 1) {
+    // Single image — fill entire space with cover crop
+    const img = active[0];
+    const scale = Math.max(BW / img.naturalWidth, BH / img.naturalHeight);
+    const sw = BW / scale, sh = BH / scale;
+    const sx = (img.naturalWidth - sw) / 2, sy = (img.naturalHeight - sh) / 2;
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, BW, BH);
+  } else if (n === 2) {
+    // 2 images — side by side
+    const slotW = Math.floor(BW / 2);
+    active.forEach((img, i) => {
+      const dx = i * slotW;
+      const dw = i === 1 ? BW - dx : slotW;
+      const scale = Math.max(dw / img.naturalWidth, BH / img.naturalHeight);
+      const sw = dw / scale, sh = BH / scale;
+      const sx = (img.naturalWidth - sw) / 2, sy = (img.naturalHeight - sh) / 2;
+      ctx.drawImage(img, sx, sy, sw, sh, dx, 0, dw, BH);
+      if (i > 0) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(dx, 0, 3, BH); }
+    });
+  } else if (n === 3) {
+    // 3 images — first takes top half full width, bottom two split
+    const topH = Math.floor(BH / 2), botH = BH - topH;
+    const botW = Math.floor(BW / 2);
+    // Top image
+    const img0 = active[0];
+    const s0 = Math.max(BW / img0.naturalWidth, topH / img0.naturalHeight);
+    ctx.drawImage(img0, (img0.naturalWidth - BW/s0)/2, (img0.naturalHeight - topH/s0)/2, BW/s0, topH/s0, 0, 0, BW, topH);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(0, topH, BW, 3);
+    // Bottom two
+    [active[1], active[2]].forEach((img, i) => {
+      const dx = i * botW, dw = i === 1 ? BW - botW : botW;
+      const scale = Math.max(dw / img.naturalWidth, botH / img.naturalHeight);
+      const sw = dw / scale, sh = botH / scale;
+      ctx.drawImage(img, (img.naturalWidth - sw)/2, (img.naturalHeight - sh)/2, sw, sh, dx, topH + 3, dw, botH);
+      if (i > 0) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(dx, topH, 3, botH); }
+    });
+  } else {
+    // 4 images — 2×2 grid
+    const hw = Math.floor(BW / 2), hh = Math.floor(BH / 2);
+    active.forEach((img, i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const dx = col * hw, dy = row * hh;
+      const dw = col === 1 ? BW - hw : hw, dh = row === 1 ? BH - hh : hh;
+      const scale = Math.max(dw / img.naturalWidth, dh / img.naturalHeight);
+      const sw = dw / scale, sh = dh / scale;
+      ctx.drawImage(img, (img.naturalWidth - sw)/2, (img.naturalHeight - sh)/2, sw, sh, dx, dy, dw, dh);
+    });
+    // Grid lines
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillRect(hw - 1, 0, 3, BH);
+    ctx.fillRect(0, hh - 1, BW, 3);
+  }
+
+  canvas.style.display = 'block';
+  ph.style.display = 'none';
+}
+
+// ══════════════════════════════════
+//  PUBLICATIONS
+// ══════════════════════════════════
+function updatePubs() {
+  const n = parseInt(document.getElementById('pubCount').value) || 0;
+  const container = document.getElementById('pubFields');
+  container.innerHTML = '';
+  for (let i = 1; i <= n; i++) {
+    const d = document.createElement('div');
+    d.className = 'pub-entry';
+    d.innerHTML = `
+      <div class="pub-entry-hdr">Publication ${i}</div>
+      <div class="field">
+        <label>Citation / Short Reference</label>
+        <input type="text" id="pub-t-${i}" placeholder="Author(s), Year. Title. Journal, Vol(Issue)…" oninput="renderPubs()">
+      </div>
+      <div class="field">
+        <label>URL / DOI Link</label>
+        <input type="url" id="pub-u-${i}" placeholder="https://doi.org/…" oninput="renderPubs()">
+      </div>`;
+    container.appendChild(d);
+  }
+  renderPubs();
+}
+
+function renderPubs() {
+  const n = parseInt(document.getElementById('pubCount').value) || 0;
+  const strip = document.getElementById('ph-pubs');
+  const row   = document.getElementById('ph-pubs-row');
+
+  if (n === 0) {
+    strip.style.display = 'none';
+    row.innerHTML = '';
+    requestAnimationFrame(renderTopicBanner);
+    return;
+  }
+  strip.style.display = 'block';
+  requestAnimationFrame(renderTopicBanner);
+  row.innerHTML = '';
+
+  const pubQrIds = [];
+
+  for (let i = 1; i <= n; i++) {
+    const title = document.getElementById(`pub-t-${i}`)?.value || '';
+    const url   = document.getElementById(`pub-u-${i}`)?.value || '';
+    const qrUrl = (url && url.startsWith('http')) ? url : `https://swinburne.edu.au/research/pub-${i}`;
+
+    const card = document.createElement('div');
+    card.className = 'ph-pub-card';
+
+    const topBar = document.createElement('div');
+    topBar.className = 'ph-pub-card-top';
+    card.appendChild(topBar);
+
+    const body = document.createElement('div');
+    body.className = 'ph-pub-card-body';
+
+    const qrWrap = document.createElement('div');
+    qrWrap.className = 'ph-pub-qr-wrap';
+    qrWrap.id = `pub-qr-${i}`;
+    qrWrap.dataset.qrUrl = qrUrl;
+
+    const info = document.createElement('div');
+    info.className = 'ph-pub-info';
+    info.innerHTML = `<div class="ph-pub-label">Publication ${i}</div><div class="ph-pub-cite">${title || '<em style="color:#aaa">Citation will appear here</em>'}</div>`;
+
+    body.appendChild(qrWrap);
+    body.appendChild(info);
+    card.appendChild(body);
+    row.appendChild(card);
+
+    pubQrIds.push({ id: `pub-qr-${i}`, url: qrUrl });
+  }
+
+  // Generate all pub QRs after layout settles — uses offsetWidth for correct size
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      pubQrIds.forEach(({ id, url }) => generateQR(id, url, 64));
+    }, 60);
+  });
+}
+
+// ── Reset ──
+function resetForm() {
+  if (!confirm('Reset all fields and images?')) return;
+  document.querySelectorAll('input[type=text], input[type=url], textarea').forEach(el => el.value = '');
+  document.getElementById('pubCount').value = 3;
+  document.getElementById('supCount').value = 2;
+  // Clear supervisor photo cache
+  Object.keys(supPhotos).forEach(k => delete supPhotos[k]);
+  Object.keys(supFetching).forEach(k => delete supFetching[k]);
+  removeImg('photo');
+  // Clear all topic slots
+  for (let i = 0; i < 4; i++) {
+    topicImgs[i] = null;
+    const thumb = document.getElementById(`tthumb-${i}`);
+    if (thumb) { thumb.style.backgroundImage = ''; thumb.classList.remove('has-img'); }
+    const empty = document.getElementById(`tempty-${i}`);
+    if (empty) empty.style.display = '';
+    const slot = document.getElementById(`tslot-${i}`);
+    if (slot) slot.classList.remove('filled');
+  }
+  const canvas = document.getElementById('ph-topic-canvas');
+  if (canvas) canvas.style.display = 'none';
+  const ph = document.getElementById('ph-topic-ph');
+  if (ph) ph.style.display = 'flex';
+  update();
+  updateSups();
+  updatePubs();
+}
+
+// ── Init ──
+update();
+updateSups();
+updatePubs();
+buildTopicSlots();
+scalePoster();
+
+// Re-fit summary text whenever the container is resized (e.g. on window resize)
+const summaryBox = document.querySelector('.ph-summary-box');
+if (summaryBox && window.ResizeObserver) {
+  new ResizeObserver(() => requestAnimationFrame(fitSummary)).observe(summaryBox);
+}
+</script>
+</body>
+</html>
