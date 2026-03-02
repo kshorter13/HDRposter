@@ -11,6 +11,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SoHS HDR Profile Poster Creator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>  
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
@@ -1570,14 +1572,21 @@ function printWithName() {
   const name = (document.getElementById('name')?.value || '').trim();
   const original = document.title;
   if (name) {
-    // Sanitise: remove characters that are invalid in filenames
     const safe = name.replace(/[\/\\:*?"<>|]/g, '').trim();
-    document.title = `HDR Poster - ${safe}`;
+    document.title = `PhD Poster - ${safe}`;
   }
-  setTimeout(() => {
-    window.print();
-    setTimeout(() => { document.title = original; }, 1500);
-  }, 150);
+  // Wait for fonts to fully load before opening print dialog
+  const doPrint = () => {
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => { document.title = original; }, 1500);
+    }, 150);
+  };
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(doPrint);
+  } else {
+    doPrint();
+  }
 }
 // ── Reset ──
 function resetForm() {
