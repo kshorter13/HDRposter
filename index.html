@@ -982,9 +982,16 @@ function onSupUrlChange(idx) {
   renderSups();
 }
 
-// ── Fetch supervisor photo from experts.swinburne.edu.au thumbnail URL ──
-// The thumbnail URL pattern is: https://experts.swinburne.edu.au/NUMBER-firstname-lastname/thumbnail
-// We fetch the staff profile page (via corsproxy) to extract the NUMBER, then fetch the image.
+// ── Fetch supervisor photo from experts.swinburne.edu.au ──
+//
+
+const CORS_PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,
+];
+
 async function fetchSupPhoto(idx, profileUrl) {
   if (!profileUrl || !profileUrl.startsWith('http')) return;
   if (supPhotos.hasOwnProperty(idx) || supFetching[idx]) return;
@@ -994,52 +1001,72 @@ async function fetchSupPhoto(idx, profileUrl) {
   if (av) { av.className = 'ph-sup-card-avatar-loading'; av.innerHTML = ''; }
 
   try {
-    let thumbnailUrl = null;
-
-
+    // --- Derive thumbnail URL ---
     const expertsMatch = profileUrl.match(/experts\.swinburne\.edu\.au\/([\d]+[\w-]+)/i);
-    if (expertsMatch) {
-      thumbnailUrl = `https://experts.swinburne.edu.au/${expertsMatch[1]}/thumbnail`;
+    if (!expertsMatch) throw new Error('not an experts.swinburne.edu.au URL — use manual upload');
+    const thumbnailUrl = `https://experts.swinburne.edu.au/${expertsMatch[1]}/thumbnail`;
+
+    // --- Attempt 1: direct fetch (works if server sends CORS headers) ---
+    let dataUrl = null;
+    try {
+      const resp = await fetch(thumbnailUrl, { signal: AbortSignal.timeout(5000) });
+      if (resp.ok) {
+        const blob = await resp.blob();
+        dataUrl = await new Promise((res, rej) => {
+          const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej;
+          r.readAsDataURL(blob);
+        });
+      }
+    } catch(e) { /* CORS blocked — try next */ }
+
+    // --- Attempt 2: canvas crossOrigin (another CORS path, works on some configs) ---
+    if (!dataUrl) {
+      try {
+        dataUrl = await new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            try {
+              const c = document.createElement('canvas');
+              c.width = img.naturalWidth; c.height = img.naturalHeight;
+              c.getContext('2d').drawImage(img, 0, 0);
+              resolve(c.toDataURL('image/jpeg', 0.92));
+            } catch(e) { reject(e); }
+          };
+          img.onerror = reject;
+          img.src = thumbnailUrl + '?cors=' + Date.now();
+        });
+      } catch(e) { /* fall through */ }
     }
 
-    // --- Otherwise fetch the profile page HTML to find the experts ID ---
-    if (!thumbnailUrl) {
-      const pageProxy = `https://corsproxy.io/?url=${encodeURIComponent(profileUrl)}`;
-      const pageResp  = await fetch(pageProxy);
-      if (!pageResp.ok) throw new Error('page fetch failed');
-      const html = await pageResp.text();
-
-      // Look for experts.swinburne.edu.au/NUMBER-name anywhere in the HTML
-      const expertsSrcMatch = html.match(/experts\.swinburne\.edu\.au\/([\d]+[\w-]+)(?:\/thumbnail)?/i);
-      if (expertsSrcMatch) {
-        thumbnailUrl = `https://experts.swinburne.edu.au/${expertsSrcMatch[1]}/thumbnail`;
-      }
-
-      // Fallback: look for the old-style /NUMBER-name/thumbnail src on the same domain
-      if (!thumbnailUrl) {
-        const oldSrcMatch = html.match(/src=["']\/?(\d+[\w-]+\/thumbnail)["']/i);
-        if (oldSrcMatch) {
-          thumbnailUrl = `https://www.swinburne.edu.au/${oldSrcMatch[1]}`;
-        }
+    // --- Attempt 3: proxy fallback chain ---
+    if (!dataUrl) {
+      for (const proxyFn of CORS_PROXIES) {
+        try {
+          const resp = await fetch(proxyFn(thumbnailUrl), { signal: AbortSignal.timeout(8000) });
+          if (resp.ok) {
+            const blob = await resp.blob();
+            if (blob.size > 1000 && blob.type.startsWith('image/')) {
+              dataUrl = await new Promise((res, rej) => {
+                const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej;
+                r.readAsDataURL(blob);
+              });
+              break;
+            }
+          }
+        } catch(e) { /* try next proxy */ }
       }
     }
 
-    if (!thumbnailUrl) throw new Error('could not determine thumbnail URL');
-
-    // --- Fetch the image via corsproxy → blob → base64 data URL ---
-    const imgProxy = `https://corsproxy.io/?url=${encodeURIComponent(thumbnailUrl)}`;
-    const imgResp  = await fetch(imgProxy);
-    if (!imgResp.ok) throw new Error('image fetch failed');
-    const blob = await imgResp.blob();
-
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload  = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    // --- Fallback: store the raw URL directly ---
+    // The poster uses <img src=""> not canvas, so this displays AND prints correctly.
+    if (!dataUrl) {
+      dataUrl = thumbnailUrl;
+    }
 
     supPhotos[idx] = dataUrl;
+    const hint = document.getElementById(`sup-upload-hint-${idx}`);
+    if (hint) hint.textContent = '✓ Photo loaded from profile';
 
   } catch(e) {
     console.warn(`Supervisor ${idx} photo fetch failed:`, e.message);
@@ -1049,7 +1076,6 @@ async function fetchSupPhoto(idx, profileUrl) {
   delete supFetching[idx];
   updateSupAvatar(idx);
 }
-
 // ── Update just the avatar element for one supervisor without rebuilding the card ──
 function updateSupAvatar(idx) {
   const av = document.getElementById(`sup-avatar-${idx}`);
